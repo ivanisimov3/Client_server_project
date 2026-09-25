@@ -21,9 +21,6 @@ def main():
     try:
         lookup_values = load_lookup_values()
         main_rows, _ = search_main_rows({})
-    except ValueError as exc:
-        QMessageBox.critical(None, "Ошибка настроек", f"Проверьте файл .env:\n{exc}")
-        return 1
     except psycopg2.Error:
         QMessageBox.critical(
             None,
@@ -40,7 +37,7 @@ def main():
     def handle_search():
         try:
             rows, executed_query = search_main_rows(window.current_filters())
-        except (ValueError, psycopg2.Error) as exc:
+        except psycopg2.Error as exc:
             QMessageBox.critical(
                 window,
                 "Ошибка поиска",
@@ -83,7 +80,7 @@ def main():
                 return
 
             executed_query = delete_main_rows(filters)
-        except (ValueError, psycopg2.Error) as exc:
+        except psycopg2.Error as exc:
             QMessageBox.critical(window, "Ошибка удаления", str(exc))
             return
 
@@ -113,7 +110,7 @@ def main():
                 return
 
             updated_rows, executed_query = update_main_rows(filters, changes)
-        except (ValueError, psycopg2.Error) as exc:
+        except psycopg2.Error as exc:
             QMessageBox.critical(window, "Ошибка изменения", str(exc))
             return
 

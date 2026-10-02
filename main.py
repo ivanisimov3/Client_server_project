@@ -68,18 +68,20 @@ def main():
 
     def handle_delete():
         filters = window.current_filters()
+        selected_uids = window.selected_row_uids()
+        target_uids = selected_uids if selected_uids else None
         try:
-            rows, _ = search_main_rows(filters)
+            rows, _ = search_main_rows(filters, target_uids)
             if not rows:
-                QMessageBox.information(window, "Удаление", "Записи по заданным условиям не найдены")
+                QMessageBox.information(window, "Удаление", "Записи для удаления не найдены")
                 return
 
-            if filters_are_empty(filters) and not window.confirm_delete_all_rows():
+            if target_uids is None and filters_are_empty(filters) and not window.confirm_delete_all_rows():
                 return
             if not window.confirm_delete(len(rows)):
                 return
 
-            executed_query = delete_main_rows(filters)
+            executed_query = delete_main_rows(filters, target_uids)
         except psycopg2.Error as exc:
             QMessageBox.critical(window, "Ошибка удаления", str(exc))
             return
@@ -93,23 +95,25 @@ def main():
 
     def handle_update():
         filters = window.current_filters()
+        selected_uids = window.selected_row_uids()
+        target_uids = selected_uids if selected_uids else None
         dialog = UpdateDialog(lookup_values, window)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
 
         try:
             changes = dialog.current_changes()
-            rows, _ = search_main_rows(filters)
+            rows, _ = search_main_rows(filters, target_uids)
             if not rows:
-                QMessageBox.information(window, "Изменение", "Записи по заданным условиям не найдены")
+                QMessageBox.information(window, "Изменение", "Записи для изменения не найдены")
                 return
 
-            if filters_are_empty(filters) and not window.confirm_update_all_rows():
+            if target_uids is None and filters_are_empty(filters) and not window.confirm_update_all_rows():
                 return
             if not window.confirm_update(len(rows)):
                 return
 
-            updated_rows, executed_query = update_main_rows(filters, changes)
+            updated_rows, executed_query = update_main_rows(filters, changes, target_uids)
         except psycopg2.Error as exc:
             QMessageBox.critical(window, "Ошибка изменения", str(exc))
             return

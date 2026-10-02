@@ -1,5 +1,6 @@
 # Главное окно приложения
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QBrush, QColor
 from PyQt6.QtWidgets import (
     QAbstractItemView,
@@ -92,6 +93,9 @@ class MainWindow(QMainWindow):
         self.result_table.setSelectionBehavior(
             QAbstractItemView.SelectionBehavior.SelectRows # Выделение всей строки, если клик по элементу
         )
+        self.result_table.setSelectionMode(
+            QAbstractItemView.SelectionMode.ExtendedSelection # Разрешение выделения одной или нескольких строк
+        )
 
         # ---
 
@@ -107,11 +111,23 @@ class MainWindow(QMainWindow):
 
     # Показать строки
     def show_rows(self, rows):
+        self.result_table.clearSelection()
         self.result_table.setRowCount(len(rows))
         for row_index, row in enumerate(rows):
             for column_index, value in enumerate(row):
                 text = "" if value is None else str(value)
-                self.result_table.setItem(row_index, column_index, QTableWidgetItem(text)) # Кладем элемент в ячейку таблицы
+                item = QTableWidgetItem(text)
+                if column_index == 0:
+                    item.setData(Qt.ItemDataRole.UserRole, value) # Сохраняем uid для этой ячейки
+                self.result_table.setItem(row_index, column_index, item) # Кладем элемент в ячейку таблицы
+
+    # UID выделенных строк; несколько строк выбираются через Ctrl/Cmd или Shift
+    def selected_row_uids(self):
+        selected_rows = self.result_table.selectionModel().selectedRows(0)
+        return [
+            self.result_table.item(index.row(), 0).data(Qt.ItemDataRole.UserRole) # Достаем uid 0 столбца строки
+            for index in sorted(selected_rows, key=lambda index: index.row()) # Сортируем по номеру строки на экране
+        ]
 
     # Возвращаем пары <id, box> для каждого выпадающего списка
     def selected_lookup_ids(self):

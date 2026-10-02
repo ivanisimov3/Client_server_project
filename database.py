@@ -68,16 +68,22 @@ def build_filter_where(filters):
     where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
     return where_clause, tuple(parameters)
 
+# Выделение в таблице имеет приоритет над полями фильтра
+def build_target_where(filters, uids=None):
+    if uids is not None:
+        return " WHERE m.uid = ANY(%s)", (list(uids),) # Возвращаем запрос для выделенных строк и для обращения по ним используем uid
+    return build_filter_where(filters)
+
 # ---
 
 # Составление SELECT запроса
-def build_main_search_query(filters):
-    where_clause, parameters = build_filter_where(filters)
+def build_main_search_query(filters, uids=None):
+    where_clause, parameters = build_target_where(filters, uids)
     return MAIN_SELECT + where_clause + " ORDER BY m.uid", parameters
 
 # Выполняем запрос поиска, устанавливая параметры в плейсхолдеры
-def search_main_rows(filters):
-    query, parameters = build_main_search_query(filters)
+def search_main_rows(filters, uids=None):
+    query, parameters = build_main_search_query(filters, uids)
     connection = psycopg2.connect(**load_db_config(), connect_timeout=5)
     try:
         with connection.cursor() as cursor:
@@ -122,8 +128,8 @@ def insert_main_row(values):
 # ---
 
 # Удалить подтверждённые строки только из main
-def delete_main_rows(filters):
-    where_clause, parameters = build_filter_where(filters)
+def delete_main_rows(filters, uids=None):
+    where_clause, parameters = build_target_where(filters, uids)
     query = "DELETE FROM public.main AS m" + where_clause
     connection = psycopg2.connect(**load_db_config(), connect_timeout=5)
     try:
@@ -142,7 +148,7 @@ def delete_main_rows(filters):
 # ---
 
 # Составление UPDATE запроса
-def build_main_update_query(filters, changes):
+def build_main_update_query(filters, changes, uids=None):
     assignments = []
     set_parameters = []
     for key in FILTER_COLUMNS:
@@ -151,7 +157,7 @@ def build_main_update_query(filters, changes):
             assignments.append(f"{key} = %s")
             set_parameters.append(value)
 
-    where_clause, where_parameters = build_filter_where(filters)
+    where_clause, where_parameters = build_target_where(filters, uids)
     query = "UPDATE public.main AS m SET " + ", ".join(assignments) + where_clause + " RETURNING m.uid"
     return query, tuple(set_parameters) + where_parameters
 
@@ -161,8 +167,8 @@ def fetch_main_rows_by_uids(cursor, uids):
     return cursor.fetchall()
 
 # Обновить подтверждённые строки
-def update_main_rows(filters, changes):
-    query, parameters = build_main_update_query(filters, changes)
+def update_main_rows(filters, changes, uids=None):
+    query, parameters = build_main_update_query(filters, changes, uids)
     connection = psycopg2.connect(**load_db_config(), connect_timeout=5)
     try:
         with connection.cursor() as cursor:
